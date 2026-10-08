@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const esc = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const date = value => value ? new Date(value).toLocaleString(undefined, {dateStyle:'medium',timeStyle:'short'}) : '—';
 const number = n => Number(n || 0).toLocaleString();
-const state = { token:'', repo:null, live:null, active:null, selected:null, branch:null, reachable:null, compare:null, panel:'details', stats:null, snapshots:[], snapshotIndex:null, loading:false, rowsLoading:false, operation:null, preview:null, xray:null, search:'' };
+const state = { token:'', repo:null, live:null, active:null, selected:null, branch:null, reachable:null, compare:null, panel:'details', stats:null, snapshots:[], snapshotIndex:null, loading:false, rowsLoading:false, operation:null, preview:null, xray:null, search:'',favorites:[] };
 const api = async (route, body = undefined) => {
   const response = await fetch('/api/' + route, body === undefined ? {} : {method:'POST',headers:{'Content-Type':'application/json','X-GitScope-Token':state.token},body:JSON.stringify(body)});
   const result = await response.json(); if (!response.ok) throw Error(result.error || `HTTP ${response.status}`); return result;
@@ -35,7 +35,7 @@ async function openPath(path) {
   $('welcome').classList.add('hidden');
   try {
     const data = await api('open', {path});
-    state.repo = path; state.live = data; state.branch = null; state.reachable=null; state.compare = null; state.snapshotIndex=null;state.selected=null;
+    state.repo = path; state.favorites=loadFavorites(path); state.live = data; state.branch = null; state.reachable=null; state.compare = null; state.snapshotIndex=null;state.selected=null;
     setConnected(data); await Promise.all([refreshStats(), loadSnapshots()]);
     toast('Repository connected: '+data.name);
   } catch(e) { $('welcome').classList.remove('hidden'); report(e); }
@@ -63,19 +63,53 @@ async function loadMore() {
 $('graphScroller').addEventListener('scroll', () => {
   const el=$('graphScroller'); if (el.scrollTop + el.clientHeight >= el.scrollHeight - 900) loadMore();
 },{passive:true});
-function refsHTML(branches, root, id) {
-  const entries = branches.filter(r=>r.kind===id);
-  $(root).innerHTML = entries.map(r=> `<button class="branch-item ${r.kind==='remote'?'remote':r.kind==='tag'?'tag':''} ${r.fullName===state.branch?'selected':''} ${r.fullName===state.compare?.b.fullName?'comparing':''}" data-ref="${esc(r.fullName)}" title="${esc(r.fullName)}">
-    <span class="branch-symbol">${id==='local'?'⑂':id==='remote'?'◈':'◇'}</span><span class="branch-name">${esc(r.name)}</span>${r.current?'<span class="current-badge">HEAD</span>':''}<span class="branch-menu" title="Git actions">⋮</span></button>`).join('') || '<p class="small-note" style="padding-left:12px">None detected</p>';
-  $(({local:'localCount',remote:'remoteCount',tag:'tagCount'})[id]).textContent=entries.length;
+function loadFavorites(path){try{return JSON.parse(localStorage.getItem('gitscope:favorites:'+path)||'[]');}catch{return [];}}
+function toggleFavorite(fullName){
+  state.favorites=state.favorites.includes(fullName)?state.favorites.filter(x=>x!==fullName):[...state.favorites,fullName];
+  localStorage.setItem('gitscope:favorites:'+state.repo,JSON.stringify(state.favorites));renderRefs();toast('Favorites updated');
 }
-function renderRefs(){ if (!state.active) return; for(const [k,v] of [['local','localBranches'],['remote','remoteBranches'],['tag','tagBranches']]) refsHTML(state.active.refs,v,k); }
-for(const root of ['localBranches','remoteBranches','tagBranches']) $(root).addEventListener('click',e=> {
-  const node=e.target.closest('.branch-item'); if(!node) return;
-  const ref=state.active.refs.find(r=>r.fullName===node.dataset.ref);
-  if(e.target.classList.contains('branch-menu')) {openOperation('switch',ref.name);return;}
-  selectBranch(ref.fullName,e.ctrlKey||e.metaKey||e.shiftKey);
-});
+function branchHTML(r) {
+  return `<button class="branch-item ${r.kind==='remote'?'remote':r.kind==='tag'?'tag':''} ${r.fullName===state.branch?'selected':''} ${r.fullName===state.compare?.b.fullName?'comparing':''}" data-ref="${esc(r.fullName)}" title="${esc(r.fullName)}">
+    <span class="branch-symbol">${state.favorites.includes(r.fullName)?'★':r.kind==='local'?'⑂':r.kind==='remote'?'◈':'◇'}</span><span class="branch-name">${esc(r.name)}</span>${r.current?'<span class="current-badge">HEAD</span>':''}<span class="branch-menu" title="More branch actions">⋮</span></button>`;
+}
+function renderRefs(){
+  if (!state.active) return;
+  for(const [kind,root,count] of [['local','localBranches','localCount'],['remote','remoteBranches','remoteCount'],['tag','tagBranches','tagCount']]){
+    const entries=state.active.refs.filter(r=>r.kind===kind);
+    $(root).innerHTML=entries.map(branchHTML).join('') || '<p class="small-note" style="padding-left:12px">None detected</p>';
+    $(count).textContent=entries.length;
+  }
+  const fav=state.active.refs.filter(r=>state.favorites.includes(r.fullName));
+  $('favoriteBranches').innerHTML=fav.map(branchHTML).join('')||'<p class="small-note" style="padding-left:12px">Star a branch using ⋮</p>';
+  $('favoriteCount').textContent=fav.length;
+}
+function showBranchMenu(r,clientX,clientY){
+  const menu=$('contextMenu');const actions=[['focus','Focus branch'],['favorite',state.favorites.includes(r.fullName)?'Remove favorite':'★ Add favorite']];
+  if(state.branch && state.branch!==r.fullName) actions.push(['compare','Compare with selected']);
+  if(r.kind==='local')actions.push(['switch','Checkout branch'],['merge','Merge into current'],['rebase','Rebase onto branch'],['delete','Delete branch']);
+  menu.innerHTML=actions.map(([type,label])=>`<button type="button" data-action="${type}">${esc(label)}</button>`).join('');
+  menu.classList.remove('hidden');menu.style.left=Math.max(8,Math.min(clientX,window.innerWidth-227))+'px';
+  menu.style.top=Math.max(8,Math.min(clientY,window.innerHeight-actions.length*37-20))+'px';
+  menu.onclick=e=>{const action=e.target.closest('[data-action]')?.dataset.action;menu.classList.add('hidden');if(!action)return;
+    if(action==='favorite')toggleFavorite(r.fullName);
+    else if(action==='focus')selectBranch(r.fullName);
+    else if(action==='compare')selectBranch(r.fullName,true);
+    else openOperation(action,r.name);
+  };
+}
+for(const root of ['localBranches','remoteBranches','tagBranches','favoriteBranches']){
+  $(root).addEventListener('click',e=>{
+    const node=e.target.closest('.branch-item');if(!node)return;
+    const ref=state.active.refs.find(r=>r.fullName===node.dataset.ref);
+    if(e.target.classList.contains('branch-menu')){const box=e.target.getBoundingClientRect();showBranchMenu(ref,box.right,box.top);return;}
+    selectBranch(ref.fullName,e.ctrlKey||e.metaKey||e.shiftKey);
+  });
+  $(root).addEventListener('contextmenu',e=>{
+    const node=e.target.closest('.branch-item');if(!node)return;e.preventDefault();
+    const ref=state.active.refs.find(r=>r.fullName===node.dataset.ref);showBranchMenu(ref,e.clientX,e.clientY);
+  });
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.context-menu')&&!e.target.classList.contains('branch-menu'))$('contextMenu').classList.add('hidden');});
 async function selectBranch(ref,compareMode=false) {
   if (state.snapshotIndex!==null) {toast('Return to LIVE to compare current references.');return;}
   if (compareMode && state.branch && state.branch!==ref) {
@@ -198,11 +232,12 @@ function returnLive(){state.snapshotIndex=null;state.selected=null;state.branch=
 async function drawMachine(){
   const snapshots=state.snapshots;
   $('drawerBody').innerHTML=`<p>GitScope automatically captures changed references and recent graph metadata. These records are not source-code backups.</p><div class="data-row"><span>Recorded states</span><strong>${snapshots.length}</strong></div>
-    <div class="panel-actions"><button id="timeReturn">Return to live</button>${snapshots.length>=2?'<button id="timeCompare">Compare earliest ⇄ latest</button>':''}</div>
+    <div class="panel-actions"><button id="timeReturn">Return to live</button></div>${snapshots.length>=2?`<div class="dim-heading">COMPARE RECORDED STATES</div><select id="snapshotFrom" class="picker">${snapshots.map((s,i)=>`<option value="${i}">${esc(date(s.captured))}</option>`).join('')}</select><select id="snapshotTo" class="picker">${snapshots.map((s,i)=>`<option value="${i}">${esc(date(s.captured))}</option>`).join('')}</select><button class="secondary-button" id="timeCompare">Compare selected snapshots</button>`:''}
     <div id="machineCompareResult"></div><h3>Recorded snapshots</h3>${snapshots.slice().reverse().map((x,i)=>`<button class="snapshot-item" data-snapshot="${snapshots.length-1-i}">${esc(date(x.captured))}<small>${esc(x.summary.reason)} · ${x.summary.refs} refs · ${number(x.summary.commits)} commits (${x.summary.cached} cached)</small></button>`).join('')}`;
   $('timeReturn').onclick=returnLive;
+  if ($('timeCompare')) { $('snapshotTo').value=String(snapshots.length-1); }
   $('timeCompare') && ($('timeCompare').onclick=async()=>{
-    try {const a=snapshots[0],b=snapshots.at(-1);const x=await api(`snapshot-diff?from=${a.id}&to=${b.id}`);
+    try {const a=snapshots[Number($('snapshotFrom').value)],b=snapshots[Number($('snapshotTo').value)];const x=await api(`snapshot-diff?from=${a.id}&to=${b.id}`);
       $('machineCompareResult').innerHTML=`<div class="info-grid"><dt>Created</dt><dd>${esc(x.created.join(', ')||'None')}</dd><dt>Deleted</dt><dd>${esc(x.deleted.join(', ')||'None')}</dd><dt>Moved refs</dt><dd>${esc(x.moved.map(m=>m.ref).join(', ')||'None')}</dd><dt>HEAD changed</dt><dd>${x.headChanged?'Yes':'No'}</dd></div><p class="small-note">${esc(x.note)}</p>`;
     }catch(e){report(e);}
   });
@@ -273,7 +308,7 @@ async function bootstrap(){
     const b=await api('bootstrap');state.token=b.token;
     $('recentList').innerHTML=b.recent.map(x=>`<button class="recent-item" data-path="${esc(x.repo)}">⌘ &nbsp; ${esc(x.repo)}</button>`).join('')||'<span class="small-note">No workspaces opened yet.</span>';
     $('recentList').querySelectorAll('[data-path]').forEach(b=>b.onclick=()=>openPath(b.dataset.path));
-    if(b.repo){const data=await api('state?limit=600');state.repo=b.repo;state.live=data;setConnected(data);refreshStats();loadSnapshots();}
+    if(b.repo){const data=await api('state?limit=600');state.repo=b.repo;state.favorites=loadFavorites(b.repo);state.live=data;setConnected(data);refreshStats();loadSnapshots();}
     else showWelcome();
   }catch(e){report(e);showWelcome();}
 }

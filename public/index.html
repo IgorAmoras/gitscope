@@ -34,7 +34,7 @@
     <div class="workspace" id="workspace">
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-heading"><span>EXPLORER</span><button class="side-toggle" id="collapseSidebar" title="Collapse sidebar">☰</button></div>
-        <div class="side-content" id="sideContent">
+        <div class="side-content" id="sideContent"><div class="side-group"><div class="group-header"><span>★</span> FAVORITES <span id="favoriteCount" class="count">0</span></div><div id="favoriteBranches" class="branch-list"></div></div>
           <div class="side-group"><div class="group-header"><span>◈</span> LOCAL BRANCHES <span id="localCount" class="count">0</span></div><div id="localBranches" class="branch-list"></div></div>
           <div class="side-group"><div class="group-header"><span>◇</span> REMOTES <span id="remoteCount" class="count">0</span></div><div id="remoteBranches" class="branch-list"></div></div>
           <div class="side-group"><div class="group-header"><span>⌑</span> TAGS <span id="tagCount" class="count">0</span></div><div id="tagBranches" class="branch-list"></div></div>
@@ -62,7 +62,7 @@
 
     <div id="welcome" class="modal-backdrop hidden"><div class="welcome-card"><button id="closeWelcome" class="welcome-close">✕</button><div class="welcome-brand">◈ &nbsp; G I T S C O P E</div><div class="welcome-glow">⑂</div><h2>Understand every branch<br><em>of the story.</em></h2><p>Explore any local Git repository. Zero setup. No cloud, no credentials, just your history.</p><form id="repoForm"><label for="repoPath">LOCAL REPOSITORY PATH</label><div class="path-row"><input id="repoPath" name="path" required placeholder="C:\Users\you\projects\orchestra" spellcheck="false"><button type="submit" class="primary-button">Explore ↗</button></div></form><div class="recent-heading">RECENT WORKSPACES</div><div id="recentList" class="recent-list"></div><span class="welcome-foot">NODE.JS + NATIVE GIT &nbsp; / &nbsp; 100% LOCAL</span></div></div>
     <div id="confirmModal" class="modal-backdrop hidden"><div class="confirm-card"><span class="eyebrow">GIT OPERATION</span><h2 id="confirmTitle">Confirm operation</h2><p id="confirmExplanation"></p><div class="confirm-form"><label for="operationType">OPERATION</label><select id="operationType" class="picker"><option value="fetch">Fetch</option><option value="pull">Pull (fast-forward only)</option><option value="push">Push</option><option value="switch">Checkout / switch</option><option value="create">Create branch</option><option value="delete">Delete merged branch</option><option value="merge">Merge into current</option><option value="rebase">Rebase onto branch</option><option value="merge-abort">Abort merge</option><option value="rebase-abort">Abort rebase</option><option value="merge-continue">Continue merge</option><option value="rebase-continue">Continue rebase</option></select><label for="confirmBranch">BRANCH OR TARGET</label><input id="confirmBranch" placeholder="branch-name"><label for="confirmRemote">REMOTE</label><input id="confirmRemote" value="origin"></div><div id="confirmPreview" class="preview-text"></div><div class="confirm-actions"><button id="confirmCancel">Cancel</button><button id="confirmProceed" class="primary-button">Review operation ↗</button></div></div></div>
-    <div id="toast" class="toast hidden" role="status"></div>
+    <div id="contextMenu" class="context-menu hidden" role="menu"></div><div id="toast" class="toast hidden" role="status"></div>
   </div>
   <script type="module" src="/js/app.js"></script>
 </body>

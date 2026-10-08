@@ -18,12 +18,17 @@ export async function preview(cwd, type, options = {}) {
     const remotes = (await git(cwd, ['remote'])).output.trim().split('\n').filter(Boolean);
     if (!remotes.includes(remote)) throw new GitError('Unknown remote. Configure a Git remote first.');
   }
-  if (type === 'pull' && !h.branch) throw new GitError('Select a local branch with an upstream before pulling');
+  if (type === 'pull') {
+    if (!h.branch) throw new GitError('Checkout a local branch with an upstream before pulling');
+    const upstream=await git(cwd,['rev-parse','--abbrev-ref','--symbolic-full-name','@{upstream}'],{allowFailure:true});
+    if(upstream.code !== 0 || !upstream.output.trim()) throw new GitError('This branch has no upstream. Configure upstream externally before pulling.');
+    remote=upstream.output.trim();
+  }
   if (type === 'push' && !h.branch) throw new GitError('Select a local branch before pushing');
   const targetName = target?.name || null;
   const summary = {
     fetch: `Fetch remote references from ${remote} (network request; no checkout change).`,
-    pull: `Pull ${h.branch} using fast-forward only. No implicit merge commit.`,
+    pull: `Pull ${h.branch} from its tracked upstream ${remote} using fast-forward only. No implicit merge commit.`,
     push: `Push ${h.branch} to ${remote} without force.`,
     switch: `Switch to local branch ${targetName}.`,
     create: `Create branch ${param} from HEAD (without switching).`,
@@ -40,7 +45,7 @@ export async function preview(cwd, type, options = {}) {
 export async function execute(cwd, type, options = {}) {
   const plan = await preview(cwd, type, options);
   const args = {
-    fetch: ['fetch', plan.remote, '--prune'],
+    fetch: ['fetch', plan.remote],
     pull: ['pull', '--ff-only'],
     push: ['push', plan.remote, 'HEAD'],
     switch: ['switch', plan.branch],

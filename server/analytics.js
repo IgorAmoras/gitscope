@@ -1,4 +1,4 @@
-import { git, log, refs, validRef } from './git.js';
+import { git, log, refs, validRef, head } from './git.js';
 
 export async function analytics(cwd, { branch = '', author = '', days = 365 } = {}) {
   const selected = branch ? await validRef(cwd, branch) : null;
@@ -12,7 +12,8 @@ export async function analytics(cwd, { branch = '', author = '', days = 365 } = 
     commits.push(...batch);
     if (batch.length < page) break;
   }
-  const totalReachable = selected ? Number((await git(cwd, ['rev-list', '--count', selected.sha])).output.trim()) : Number((await git(cwd, ['rev-list', '--count', '--all'])).output.trim());
+  const h = selected ? null : await head(cwd);
+  const totalReachable = selected ? Number((await git(cwd, ['rev-list', '--count', selected.sha])).output.trim()) : Number((await git(cwd, h.sha?['rev-list', '--count', '--all','HEAD']:['rev-list','--count','--all'])).output.trim());
   const names = await refs(cwd);
   const allAuthors = [...new Map(commits.map(c => [c.email.toLowerCase(), { email: c.email, name: c.author }])).values()];
   const filtered = commits.filter(c => !author || c.email.toLowerCase() === author.toLowerCase());

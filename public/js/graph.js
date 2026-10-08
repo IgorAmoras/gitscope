@@ -12,7 +12,8 @@ export function buildLayout(commits) {
     if (lane < 0) { lane = active.indexOf(null); if (lane < 0) lane = active.length; active[lane] = commit.sha; }
     positions.set(commit.sha, { index:i, lane });
     rows.push({ commit, index:i, lane });
-    active[lane] = commit.parents[0] || null;
+    const firstParent = commit.parents[0] || null;
+    active[lane] = firstParent && active.some((v, k) => k !== lane && v === firstParent) ? null : firstParent;
     for (const parent of commit.parents.slice(1)) {
       if (active.includes(parent)) continue;
       let free = active.indexOf(null);

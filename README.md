@@ -20,7 +20,7 @@ The app listens on **http://127.0.0.1:4173** and attempts to open a browser. To 
 
 1. Paste an **absolute path** to a local Git working tree, including paths with spaces.
 2. GitScope loads references and a topologically ordered commit graph automatically.
-3. Click a branch to focus its reachable ancestry, or **Ctrl-click** a second branch to compare its history.
+3. Click a branch to focus its reachable ancestry, or **Ctrl-click** a second branch to compare its history. Right-click a branch for Git actions and favorites.
 4. Click a commit to select it and double-click to inspect details. Press `/` to search; `Esc` closes the inspector.
 5. Open **Analytics**, **X-Ray**, or **Time Machine** from the top bar. Open **Git actions** to preview and run an operation.
 
@@ -30,7 +30,7 @@ The app listens on **http://127.0.0.1:4173** and attempts to open a browser. To 
 - **Branch Intelligence:** merge-base, exact ahead/behind counts, exclusive SHA lists and deterministic explanations using native Git.
 - **Analytics:** unique reachable commits, authors (matched by email), merge counts, 7/30-day activity, GitHub-style contribution heatmap, and sampled file churn. Filters for author, branch and period.
 - **X-Ray:** recent local reflog events and equivalent-patch signals using `git cherry`. Equivalence **does not prove** cherry-pick or rebase.
-- **Time Machine:** SQLite metadata index and compressed JSON graph snapshots in `~/.gitscope`, captured on open, after relevant changes and before/after operations. Scrub recorded snapshots in the **same graph**, and compare ref creation/deletion/movements.
+- **Time Machine:** SQLite metadata index and compressed JSON graph snapshots in `~/.gitscope`, captured on open, after relevant changes and before/after operations. Scrub recorded snapshots in the **same graph**, and compare any two recorded states for ref creation/deletion/movements.
 - **Git operations:** fetch, pull (`--ff-only`), push (no force), switch, branch create/delete (safe `-d`), merge, rebase and continue/abort flows. Explicit two-step preview; no conflict editor.
 - **Local security:** loopback-only server, Origin and Host checks, in-memory random session token on JSON POST, allowlisted Git commands, bounded output and timeouts, no account tokens or credentials retained.
 

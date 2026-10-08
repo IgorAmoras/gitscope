@@ -7,7 +7,7 @@ import { gzipSync, gunzipSync } from 'node:zlib';
 import { overview, log } from './git.js';
 
 export class SnapshotStore {
-  constructor(location = join(homedir(), '.gitscope')) { this.root = location; this.db = null; }
+  constructor(location = join(homedir(), '.gitscope')) { this.root = location; this.db = null; this.inflight = new Map(); }
   async init() {
     await mkdir(this.root, { recursive: true }); await mkdir(join(this.root, 'snapshots'), { recursive: true });
     this.db = new DatabaseSync(join(this.root, 'gitscope.sqlite'));
@@ -21,6 +21,12 @@ export class SnapshotStore {
   recents() { return this.db.prepare('SELECT repo,opened FROM recent ORDER BY opened DESC LIMIT 12').all(); }
   list(repo) { return this.db.prepare('SELECT id,captured,summary,fingerprint FROM snapshots WHERE repo=? ORDER BY captured DESC LIMIT 500').all(repo).map(x => ({ ...x, summary: JSON.parse(x.summary) })); }
   async capture(repo, reason = 'observed') {
+    const previous = this.inflight.get(repo) || Promise.resolve();
+    const task = previous.catch(() => {}).then(() => this.#captureUnlocked(repo, reason));
+    this.inflight.set(repo, task);
+    try { return await task; } finally { if (this.inflight.get(repo) === task) this.inflight.delete(repo); }
+  }
+  async #captureUnlocked(repo, reason) {
     const state = await overview(repo, { limit: 1 });
     const stable = JSON.stringify({ refs: state.refs.map(r => [r.fullName, r.sha]), sha: state.head.sha, branch: state.head.branch, dirty: state.head.dirty, changes: state.head.changes });
     const fingerprint = createHash('sha256').update(stable).digest('hex');

@@ -59,18 +59,22 @@ export async function log(cwd, { limit = 500, offset = 0, ref = '--all' } = {}) 
   const skip = Math.max(0, Number(offset) || 0);
   // Git's topo-order is authoritative; timestamps are display metadata only.
   const args = ['log', '--topo-order', '-z', `--format=${META_FORMAT}`, `--max-count=${count}`, `--skip=${skip}`];
-  if (ref === '--all') args.push('--all'); else args.push(ref);
+  if (ref === '--all') {
+    args.push('--all');
+    const current = await git(cwd, ['rev-parse', '--verify', '-q', 'HEAD'], { allowFailure:true });
+    if (current.code === 0 && current.output.trim()) args.push('HEAD');
+  } else args.push(ref);
   const { output, code } = await git(cwd, args, { allowFailure: true, timeout: 40000, maxBytes: 50 * 1024 * 1024 });
   if (code !== 0 && !/does not have any commits yet|your current branch .* does not have any commits/i.test(output)) return [];
   return parseLog(output);
 }
 
 export async function refs(cwd) {
-  const format = '%(refname)%00%(objectname)%00%(upstream:short)%00%(HEAD)%00';
+  const format = '%(refname)%00%(objectname)%00%(*objectname)%00%(upstream:short)%00%(HEAD)%00';
   const raw = (await git(cwd, ['for-each-ref', `--format=${format}`, 'refs/heads', 'refs/remotes', 'refs/tags'])).output;
   const chunks = raw.split('\n').map(line => line.split('\0')).filter(v => v[0]);
-  return chunks.map(([name, sha, upstream, head]) => ({
-    name: name.replace(/^refs\/(heads|remotes|tags)\//, ''), fullName: name, sha, upstream,
+  return chunks.map(([name, sha, peeled, upstream, head]) => ({
+    name: name.replace(/^refs\/(heads|remotes|tags)\//, ''), fullName: name, sha: peeled || sha, upstream,
     kind: name.startsWith('refs/heads/') ? 'local' : name.startsWith('refs/remotes/') ? 'remote' : 'tag', current: head === '*'
   }));
 }
@@ -79,15 +83,15 @@ export async function head(cwd) {
   const branch = (await git(cwd, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { allowFailure: true })).output.trim();
   const status = (await git(cwd, ['status', '--porcelain=v1', '-z', '--untracked-files=normal'], { timeout: 20000 })).output;
   const conflicts = (await git(cwd, ['diff', '--name-only', '--diff-filter=U', '-z'], { allowFailure: true })).output.split('\0').filter(Boolean);
-  const rebase = (await git(cwd, ['rev-parse', '--git-path', 'rebase-merge'], { allowFailure: true })).output.trim();
   const mergeHead = (await git(cwd, ['rev-parse', '--verify', '-q', 'MERGE_HEAD'], { allowFailure: true })).output.trim();
   const shallow = (await git(cwd, ['rev-parse', '--is-shallow-repository'], { allowFailure: true })).output.trim() === 'true';
-  return { sha: /^[a-f0-9]{40,64}$/.test(sha) ? sha : null, branch: branch || null, detached: !branch && !!sha, dirty: !!status, changes: status.split('\0').filter(Boolean).length, conflicts, mergeInProgress: !!mergeHead, rebasePotential: rebase, shallow };
+  return { sha: /^[a-f0-9]{40,64}$/.test(sha) ? sha : null, branch: branch || null, detached: !branch && !!sha, dirty: !!status, changes: status.split('\0').filter(Boolean).length, conflicts, mergeInProgress: !!mergeHead, shallow };
 }
 export async function overview(cwd, { limit = 600, offset = 0 } = {}) {
-  const [branches, status, commits, count] = await Promise.all([
-    refs(cwd), head(cwd), log(cwd, { limit, offset }),
-    git(cwd, ['rev-list', '--count', '--all'], { allowFailure: true })
+  const status = await head(cwd);
+  const [branches, commits, count] = await Promise.all([
+    refs(cwd), log(cwd, { limit, offset }),
+    git(cwd, status.sha ? ['rev-list', '--count', '--all', 'HEAD'] : ['rev-list', '--count', '--all'], { allowFailure: true })
   ]);
   return { repo: cwd, name: cwd.split(/[\\/]/).filter(Boolean).at(-1), refs: branches, head: status, commits, total: Number(count.output.trim()) || 0, offset, hasMore: offset + commits.length < (Number(count.output.trim()) || 0) };
 }

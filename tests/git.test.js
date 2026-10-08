@@ -73,3 +73,33 @@ test('X-Ray reveals reflog and cherry-pick equivalence is suggestive only',async
 test('File analytics reports recent changes with sampled provenance',async()=>{
   const d=await fixture();try {const r=await fileActivity(d);assert.equal(r.approximate,true);assert(r.files.some(x=>x.file==='readme.txt'));}finally{await cleanup(d);}
 });
+test('Merge conflicts are reported and can be aborted without an embedded editor',async()=>{
+  const d=await fixture();try{
+    cmd(d,'switch','-c','topic');await writeFile(join(d,'readme.txt'),'topic\n');cmd(d,'add','.');cmd(d,'commit','-m','topic edit');
+    cmd(d,'switch','main');await writeFile(join(d,'readme.txt'),'main\n');cmd(d,'add','.');cmd(d,'commit','-m','main edit');
+    const attempt=await execute(d,'merge',{branch:'topic'});assert.equal(attempt.ok,false);assert(attempt.conflicts.includes('readme.txt'));
+    const aborted=await execute(d,'merge-abort');assert.equal(aborted.ok,true);assert.deepEqual(aborted.conflicts,[]);
+    assert.equal((await head(d)).mergeInProgress,false);
+  }finally{await cleanup(d);}
+});
+test('Rebase moves a local branch onto the new base',async()=>{
+  const d=await fixture();try{
+    cmd(d,'switch','-c','topic');await writeFile(join(d,'new.txt'),'topic\n');cmd(d,'add','.');cmd(d,'commit','-m','topic edit');
+    cmd(d,'switch','main');await writeFile(join(d,'main.txt'),'main\n');cmd(d,'add','.');cmd(d,'commit','-m','main edit');
+    const base=cmd(d,'rev-parse','HEAD');cmd(d,'switch','topic');
+    const result=await execute(d,'rebase',{branch:'main'});assert.equal(result.ok,true);
+    const parents=(await log(d,{limit:1,ref:'topic'}))[0].parents;assert.deepEqual(parents,[base]);
+  }finally{await cleanup(d);}
+});
+test('Annotated tags are peeled to commit objects and detached-only commits remain discoverable',async()=>{
+  const d=await fixture();try{
+    cmd(d,'tag','-a','v1.0','-m','annotated release');
+    const a=await overview(d);const tag=a.refs.find(x=>x.kind==='tag');assert.equal(tag.sha,a.head.sha);
+    cmd(d,'checkout','--detach','HEAD');cmd(d,'commit','--allow-empty','-m','detached unpublished work');
+    const s=await overview(d);assert.equal(s.total,2);assert.equal(s.commits[0].sha,s.head.sha);
+  }finally{await cleanup(d);}
+});
+test('Concurrent identical snapshot captures deduplicate by fingerprint',async()=>{
+  const d=await fixture(),base=await mkdtemp(join(tmpdir(),'gitscope parallel ')),store=new SnapshotStore(base);
+  try{await store.init();const a=await Promise.all([store.capture(d,'a'),store.capture(d,'b'),store.capture(d,'c')]);assert.equal(new Set(a.map(x=>x.id)).size,1);assert.equal(store.list(d).length,1);}finally{store.close();await cleanup(d);await cleanup(base);}
+});
