@@ -18,6 +18,15 @@ const graph = new GraphView($('graphScroller'), $('graphSpacer'), $('edgesSvg'),
 function setConnected(data, keepScroll = false) {
   state.active = data;
   $('emptyGraph').classList.toggle('hidden', !!data && data.commits.length > 0);
+  if (data && data.commits.length === 0) {
+    $('emptyGraph').querySelector('h2').textContent='No commits in this repository yet.';
+    $('emptyGraph').querySelector('p').textContent='GitScope is ready. Create a first commit in Git, or explore another repository.';
+    $('emptyOpen').textContent='Switch repository ↗';
+  } else {
+    $('emptyGraph').querySelector('h2').textContent='Your history, illuminated.';
+    $('emptyGraph').querySelector('p').textContent='Open a Git repository to explore its branches, commits and hidden connections.';
+    $('emptyOpen').textContent='Open repository ↗';
+  }
   if (!data) return;
   $('repoTitle').textContent = data.name;
   $('repoLocation').textContent = data.repo;

@@ -14,7 +14,7 @@ export async function preview(cwd, type, options = {}) {
   if (['rebase','merge','switch','pull'].includes(type) && h.dirty) throw new GitError('Working tree has changes. Commit or stash externally before this operation.');
   if (['merge','rebase'].includes(type) && h.detached) throw new GitError('Checkout a local branch before merging or rebasing');
   let remote = options.remote || 'origin';
-  if (['fetch','pull','push'].includes(type)) {
+  if (['fetch','push'].includes(type)) {
     const remotes = (await git(cwd, ['remote'])).output.trim().split('\n').filter(Boolean);
     if (!remotes.includes(remote)) throw new GitError('Unknown remote. Configure a Git remote first.');
   }
