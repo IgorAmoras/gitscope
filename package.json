@@ -1,0 +1,14 @@
+{
+  "name": "gitscope",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A local-first Git history explorer, graph and time machine",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test tests/*.test.js",
+    "check": "node --check server/index.js && node --check public/js/app.js && node --check public/js/graph.js"
+  }
+}
