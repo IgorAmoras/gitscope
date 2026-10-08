@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b101a"><title>GitScope — history, illuminated</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app" class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark"><i></i><i></i><i></i></span><b>git<span>scope</span></b><small>STUDIO</small></div>
+      <div class="top-divider"></div>
+      <button class="repo-picker" id="chooseRepo"><span class="repo-icon">⌘</span><span class="repo-meta"><span id="repoTitle">No repository selected</span><small id="repoLocation">Open a local Git workspace</small></span><span class="chevron">⌄</span></button>
+      <div class="top-spacer"></div>
+      <div class="branch-chip" id="branchIndicator"><span class="mini-branch">⑂</span><span id="currentBranch">—</span></div>
+      <span class="status-pill" id="workStatus"><span class="status-dot"></span> Not connected</span>
+      <button class="top-button" id="operationsButton">⑂ <span>Git actions</span> ▾</button><button class="icon-btn" id="refresh" title="Refresh repository" aria-label="Refresh">↻</button>
+      <div class="top-divider"></div>
+      <button class="top-button" id="xrayButton" title="Inspect local Git reflog">◈ <span>X-Ray</span></button>
+      <button class="top-button special" id="timeButton" title="Recorded repository states">◷ <span>Time Machine</span></button>
+      <button class="icon-btn" id="settingsButton" title="About and shortcuts">⚙</button>
+    </header>
+
+    <section class="overview-bar" id="overviewBar">
+      <div class="overview-label"><span class="eyebrow">REPOSITORY INSIGHTS</span><strong id="scopeName">ALL HISTORY</strong></div>
+      <div class="metric"><small>COMMITS</small><b id="metricCommits">—</b><span>unique reachable</span></div>
+      <div class="metric"><small>CONTRIBUTORS</small><b id="metricAuthors">—</b><span>Git authors</span></div>
+      <div class="metric"><small>BRANCHES</small><b id="metricBranches">—</b><span>local</span></div>
+      <div class="metric"><small>LAST 30 DAYS</small><b id="metricMonth">—</b><span>commits</span></div>
+      <div class="metric"><small>MERGES</small><b id="metricMerges">—</b><span>merge commits</span></div>
+      <button class="analytics-link" id="analyticsButton">ANALYTICS <span>↗</span></button>
+    </section>
+
+    <div class="workspace" id="workspace">
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-heading"><span>EXPLORER</span><button class="side-toggle" id="collapseSidebar" title="Collapse sidebar">☰</button></div>
+        <div class="side-content" id="sideContent">
+          <div class="side-group"><div class="group-header"><span>◈</span> LOCAL BRANCHES <span id="localCount" class="count">0</span></div><div id="localBranches" class="branch-list"></div></div>
+          <div class="side-group"><div class="group-header"><span>◇</span> REMOTES <span id="remoteCount" class="count">0</span></div><div id="remoteBranches" class="branch-list"></div></div>
+          <div class="side-group"><div class="group-header"><span>⌑</span> TAGS <span id="tagCount" class="count">0</span></div><div id="tagBranches" class="branch-list"></div></div>
+          <div class="sidebar-help">TIP: Hold <kbd>Ctrl</kbd> while selecting a second branch to compare their histories.</div>
+        </div>
+        <div class="sidebar-bottom"><span class="live-dot"></span><span>LOCAL-FIRST · PRIVATE</span><span class="version">v0.1</span></div>
+      </aside>
+
+      <main class="main-column" id="mainColumn">
+        <section id="machineRibbon" class="machine-ribbon hidden"><span>◷ RECORDED HISTORY</span><button id="machinePrevious" title="Previous snapshot">‹</button><input aria-label="Snapshot position" type="range" id="machineRange" min="0" max="0" value="0"><button id="machineNext" title="Next snapshot">›</button><span id="machineAt">—</span><button id="machineLive" class="tiny-action">RETURN TO LIVE ↗</button></section>
+        <section id="comparisonRibbon" class="comparison-ribbon hidden"><span class="comparison-title">↗ BRANCH COMPARISON</span><span id="comparisonText"></span><button class="tiny-action" id="comparisonClose">✕ EXIT</button></section>
+        <div class="graph-toolbar"><div class="graph-title"><span class="graph-ornament">≋</span><h1>Commit Graph</h1><span id="graphCount" class="graph-caption">—</span></div><div class="toolbar-space"></div>
+          <label class="search-field"><span>⌕</span><input id="search" type="search" placeholder="Find commit, author, SHA…" autocomplete="off"><kbd>/</kbd></label>
+          <div class="toolbar-divider"></div>
+          <button class="icon-btn small" id="zoomOut" title="Compact rows">−</button><span id="zoomLabel" class="zoom-label">100%</span><button class="icon-btn small" id="zoomIn" title="Spacious rows">+</button>
+          <button class="toolbar-pill" id="commitTableButton">☷ History</button>
+        </div>
+        <div class="graph-head" id="graphHead"><div class="head-graph">GRAPH</div><div>COMMIT / REFS</div><div>AUTHOR</div><div>DATE</div><div>SHA</div></div>
+        <div id="graphScroller" class="graph-scroller"><div id="graphContent" class="graph-content"><div id="graphSpacer" class="graph-spacer"></div><svg id="edgesSvg" class="graph-edges" aria-hidden="true"></svg><div id="visibleRows" class="visible-rows"></div></div><div id="emptyGraph" class="empty-graph"><span class="empty-icon">⑂</span><h2>Your history, illuminated.</h2><p>Open a Git repository to explore its branches, commits and hidden connections.</p><button id="emptyOpen" class="primary-button">Open repository <span>↗</span></button></div></div>
+        <footer class="graph-footer"><span id="graphFooterLeft">READY TO EXPLORE</span><span id="graphFooterRight">TOPLOGICAL ORDER · GIT NATIVE</span></footer>
+      </main>
+
+      <aside id="drawer" class="drawer hidden"><div class="drawer-heading"><div><small>INSPECTOR / <span id="drawerCategory">DETAILS</span></small><h2 id="drawerTitle">Inspector</h2></div><button class="icon-btn" id="closeDrawer">✕</button></div><div class="drawer-tabs" id="drawerTabs"><button data-panel="details" class="active">Details</button><button data-panel="diff">Diff</button><button data-panel="analytics">Analytics</button><button data-panel="xray">X-Ray</button><button data-panel="machine">Time</button><button data-panel="history">History</button></div><div id="drawerBody" class="drawer-body"></div></aside>
+    </div>
+
+    <div id="welcome" class="modal-backdrop hidden"><div class="welcome-card"><button id="closeWelcome" class="welcome-close">✕</button><div class="welcome-brand">◈ &nbsp; G I T S C O P E</div><div class="welcome-glow">⑂</div><h2>Understand every branch<br><em>of the story.</em></h2><p>Explore any local Git repository. Zero setup. No cloud, no credentials, just your history.</p><form id="repoForm"><label for="repoPath">LOCAL REPOSITORY PATH</label><div class="path-row"><input id="repoPath" name="path" required placeholder="C:\Users\you\projects\orchestra" spellcheck="false"><button type="submit" class="primary-button">Explore ↗</button></div></form><div class="recent-heading">RECENT WORKSPACES</div><div id="recentList" class="recent-list"></div><span class="welcome-foot">NODE.JS + NATIVE GIT &nbsp; / &nbsp; 100% LOCAL</span></div></div>
+    <div id="confirmModal" class="modal-backdrop hidden"><div class="confirm-card"><span class="eyebrow">GIT OPERATION</span><h2 id="confirmTitle">Confirm operation</h2><p id="confirmExplanation"></p><div class="confirm-form"><label for="operationType">OPERATION</label><select id="operationType" class="picker"><option value="fetch">Fetch</option><option value="pull">Pull (fast-forward only)</option><option value="push">Push</option><option value="switch">Checkout / switch</option><option value="create">Create branch</option><option value="delete">Delete merged branch</option><option value="merge">Merge into current</option><option value="rebase">Rebase onto branch</option><option value="merge-abort">Abort merge</option><option value="rebase-abort">Abort rebase</option><option value="merge-continue">Continue merge</option><option value="rebase-continue">Continue rebase</option></select><label for="confirmBranch">BRANCH OR TARGET</label><input id="confirmBranch" placeholder="branch-name"><label for="confirmRemote">REMOTE</label><input id="confirmRemote" value="origin"></div><div id="confirmPreview" class="preview-text"></div><div class="confirm-actions"><button id="confirmCancel">Cancel</button><button id="confirmProceed" class="primary-button">Review operation ↗</button></div></div></div>
+    <div id="toast" class="toast hidden" role="status"></div>
+  </div>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
